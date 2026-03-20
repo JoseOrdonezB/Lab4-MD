@@ -139,6 +139,8 @@ dim(train_data)
 dim(test_data)
 
 ```
+El conjunto de entrenamiento quedó conformado por 53,372 observaciones, mientras que el conjunto de prueba contiene 22,874 observaciones. Esta división se realizó de manera aleatoria utilizando una semilla fija (set.seed(123)), lo que garantiza que los resultados sean reproducibles en futuras ejecuciones.
+
 
 ## Inciso No. 2
 
@@ -159,8 +161,41 @@ rmse_tree <- rmse(test_data$price, pred_tree)
 rmse_tree
 ```
 
-El modelo de árbol de regresión obtuvo un RMSE de 2062.81, lo que indica que, en promedio, las predicciones del precio presentan un error considerable respecto a los valores reales.
+El modelo de árbol de regresión obtuvo un RMSE de 1939.518, lo que indica que, en promedio, las predicciones del precio presentan un error considerable respecto a los valores reales.
 
 Al comparar este valor con el precio promedio de las propiedades, se observa que el modelo presenta una precisión limitada, lo que sugiere que no logra capturar completamente la complejidad y variabilidad del mercado de precios.
 
 Este comportamiento puede explicarse debido a que los árboles de regresión tienden a generar predicciones constantes dentro de cada segmento, lo que reduce su capacidad para modelar relaciones más complejas entre las variables.
+
+Este resultado servirá como referencia para comparar el desempeño de modelos con diferentes configuraciones de profundidad del árbol en los siguientes incisos.
+
+
+```{r modelos con diferentes parámetros de profundidad}
+depths <- c(3, 5, 7, 10)
+
+rmse_results <- c()
+
+for(d in depths){
+  
+  modelo <- rpart(price ~ ., 
+                  data = train_data, 
+                  method = "anova",
+                  control = rpart.control(maxdepth = d))
+  
+  pred <- predict(modelo, test_data)
+  
+  rmse_val <- rmse(test_data$price, pred)
+  
+  rmse_results <- c(rmse_results, rmse_val)
+}
+
+data.frame(
+  profundidad = depths,
+  RMSE = rmse_results
+)
+```
+Se construyeron varios modelos de árboles de regresión variando la profundidad máxima (maxdepth) con el objetivo de analizar el impacto de la complejidad del modelo en su desempeño predictivo. Se observa que, a medida que aumenta la profundidad del árbol, el valor del RMSE disminuye progresivamente. Esto indica que el modelo mejora su capacidad de predicción al incorporar mayor complejidad y capturar relaciones más detalladas entre las variables.
+
+El modelo con profundidad 10 obtuvo el menor RMSE (1939.52), lo que sugiere que es el mejor modelo entre los evaluados para predecir el precio de los alojamientos.
+
+Sin embargo, es importante considerar que un aumento en la profundidad del árbol también incrementa el riesgo de sobreajuste (overfitting), ya que el modelo puede comenzar a adaptarse demasiado a los datos de entrenamiento y perder capacidad de generalización.
