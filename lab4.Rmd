@@ -1,6 +1,6 @@
 ---
 title: "lab4"
-author: "Jose Ordoñez"
+author: "Jose Ordoñez, Adrián González, Daniela Ramirez"
 date: "2026-03-20"
 output: html_document
 ---
@@ -28,7 +28,7 @@ summary(listings)
 
 ```{r limpieza de datos}
 listings$price <- as.numeric(gsub("[$,]", "", listings$price))
-
+listings_clean <- listings
 listings_clean <- listings_clean[!is.na(listings_clean$price), ]
 
 median_cols <- c(
@@ -60,17 +60,67 @@ listings_clean[review_cols] <- lapply(listings_clean[review_cols], function(x){
   x
 })
 
-listings_clean <- listings_clean[complete.cases(listings_clean), ]
+# eliminar filas con NA en variables clave
+cols_importantes <- c(
+  "price", "accommodates", "bedrooms", "bathrooms", "beds"
+)
 
-listings_clean <- listings_clean[, sapply(listings_clean, function(x) {
-  if(is.character(x)) {
-    length(unique(x)) < 50
-  } else {
-    TRUE
-  }
-})]
+listings_clean <- listings_clean[complete.cases(listings_clean[, cols_importantes]), ]
+
+# eliminar columnas irrelevantes o problemáticas
+cols_remove <- c(
+"id","listing_url","picture_url","host_url","description","host_about",
+"amenities","name"
+)
+
+listings_clean <- listings_clean[, !(names(listings_clean) %in% cols_remove)]
+
+# eliminar columnas con muchos NA (>30%)
+na_threshold <- 0.3
+listings_clean <- listings_clean[, colMeans(is.na(listings_clean)) < na_threshold]
+
+# eliminar columnas de fechas (no útiles para el modelo)
+cols_remove_extra <- c(
+  "host_since", "first_review", "last_review", "calendar_last_scraped"
+)
+
+listings_clean <- listings_clean[, !(names(listings_clean) %in% cols_remove_extra)]
+
+# eliminar columna con muchos NA restante
+listings_clean$license <- NULL
+
+# convertir porcentajes a numéricos
+listings_clean$host_response_rate <- as.numeric(gsub("%","", listings_clean$host_response_rate))
+listings_clean$host_acceptance_rate <- as.numeric(gsub("%","", listings_clean$host_acceptance_rate))
+
+# imputar NA generados
+listings_clean$host_response_rate[is.na(listings_clean$host_response_rate)] <- 
+  median(listings_clean$host_response_rate, na.rm=TRUE)
+
+listings_clean$host_acceptance_rate[is.na(listings_clean$host_acceptance_rate)] <- 
+  median(listings_clean$host_acceptance_rate, na.rm=TRUE)
+
+
+cols_remove_extra2 <- c(
+  "host_name",
+  "host_thumbnail_url",
+  "host_picture_url",
+  "neighborhood_overview"
+)
+
+listings_clean <- listings_clean[, !(names(listings_clean) %in% cols_remove_extra2)]
+
+listings_clean$host_location <- NULL
+listings_clean$host_neighbourhood <- NULL
+
+# convertir variables categóricas a factor
+listings_clean <- data.frame(lapply(listings_clean, function(x) {
+  if(is.character(x)) as.factor(x) else x
+}))
 
 colSums(is.na(listings_clean))
+dim(listings_clean)
+str(listings_clean)
 ```
 
 Durante el proceso de preprocesamiento de datos, se eliminaron ciertas variables debido a que presentaban alta cardinalidad o contenían texto libre, como nombres, descripciones y ubicaciones específicas. Estas variables generan una gran cantidad de valores únicos que dificultan el entrenamiento de los modelos y pueden provocar errores durante la predicción, además de no aportar un valor significativo en la estimación del precio. Por ello, se optó por conservar únicamente variables relevantes y estructuradas que contribuyen de manera efectiva al desempeño del modelo.
