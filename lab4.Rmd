@@ -210,3 +210,106 @@ Al comparar ambos resultados, se observa que el modelo de árbol de regresión p
 Este resultado sugiere que el árbol de regresión logra capturar mejor la complejidad del problema, modelando relaciones no lineales e interacciones entre variables que no son consideradas en el modelo de regresión lineal.
 
 Por el contrario, la regresión lineal asume una relación lineal entre las variables predictoras y la variable objetivo, lo cual limita su capacidad para adaptarse a la alta variabilidad y complejidad presente en los precios de los alojamientos.
+
+
+## Inciso No. 6
+
+```{r}
+summary(listings_clean$price)
+
+quantile(listings_clean$price, probs = c(0.25, 0.5, 0.75))
+```
+A partir del análisis exploratorio de la variable price, se observó que la distribución presenta una fuerte asimetría positiva, evidenciada por una media considerablemente mayor que la mediana, así como la presencia de valores extremos elevados.
+
+Por esta razón, se decidió utilizar los cuartiles como criterio para definir los límites de las categorías, ya que estos son más robustos frente a valores atípicos.
+
+Los puntos de corte seleccionados fueron:
+
+**Primer cuartil (Q1)**: 120
+**Tercer cuartil (Q3)**: 326
+
+Con base en estos valores, se definieron las siguientes categorías:
+
+**Económicas**: precios menores o iguales a 120
+**Intermedias**: precios entre 120 y 326
+**Caras**: precios mayores a 326
+
+```{r}
+listings_clean$price_category <- cut(
+  listings_clean$price,
+  breaks = c(-Inf, 120, 326, Inf),
+  labels = c("Economica", "Intermedia", "Cara")
+)
+
+table(listings_clean$price_category)
+prop.table(table(listings_clean$price_category))
+```
+
+Luego de definir la variable categórica, se analizó la distribución de las clases obtenidas.
+Se observa que la categoría Intermedia concentra aproximadamente el 49.68% de las observaciones, mientras que las categorías Económica y Cara representan el 25.33% y 24.99% respectivamente.
+
+Esta distribución indica que las clases están relativamente balanceadas, lo cual es favorable para el entrenamiento de modelos de clasificación, ya que evita sesgos hacia una categoría dominante y permite que el modelo aprenda patrones representativos de cada grupo de precios.
+
+## Inciso No. 7
+
+Para evitar fuga de información (data leakage), se eliminó la variable price del conjunto de entrenamiento, ya que fue utilizada para construir la variable respuesta.
+
+```{r}
+# 1. Crear variable respuesta
+listings_clean$price_category <- cut(
+  listings_clean$price,
+  breaks = c(-Inf, 120, 326, Inf),
+  labels = c("Economica", "Intermedia", "Cara")
+)
+
+# 2. Split de datos
+set.seed(123)
+train_index <- sample(1:nrow(listings_clean), 0.7*nrow(listings_clean))
+
+train_data <- listings_clean[train_index, ]
+test_data <- listings_clean[-train_index, ]
+
+# 3. Preparar datos
+train_class <- train_data
+test_class <- test_data
+
+# eliminar price
+train_class$price <- NULL
+test_class$price <- NULL
+
+# 4. Seleccionar solo variables numéricas 
+train_class_num <- train_class[, sapply(train_class, is.numeric)]
+
+# agregar variable respuesta nuevamente
+train_class_num$price_category <- train_class$price_category
+
+# 5. Reducir tamaño del dataset (eficiencia)
+set.seed(123)
+train_sample <- train_class_num[sample(1:nrow(train_class_num), 10000), ]
+
+# 6. Entrenar modelo
+tree_class <- rpart(
+  price_category ~ ., 
+  data = train_sample, 
+  method = "class",
+  control = rpart.control(
+    maxdepth = 4,
+    minsplit = 200,
+    cp = 0.01
+  )
+)
+
+# 7. Mostrar árbol
+rpart.plot(tree_class, type = 2, extra = 104)
+```
+
+El árbol de clasificación muestra que la variable más importante para clasificar el precio de las propiedades es accommodates, ya que aparece en el nodo raíz del modelo.
+
+Esto indica que la capacidad de alojamiento es el factor principal que determina si una propiedad es económica, intermedia o cara. En particular, se observa que las propiedades con capacidad menor a 4 personas tienden a clasificarse principalmente como económicas.
+
+En los niveles siguientes del árbol, aparecen variables como estimated_revenue_l365d y calculated_host_listings_count_entire_homes, las cuales permiten refinar la clasificación dentro del grupo de propiedades económicas e intermedias. Estas variables están relacionadas con el desempeño y la escala de operación del anfitrión.
+
+Para propiedades con mayor capacidad, la variable bathrooms juega un papel importante, indicando que el número de baños influye significativamente en la diferenciación entre propiedades intermedias y caras.
+
+Finalmente, variables como longitude permiten una segmentación adicional, sugiriendo que la ubicación geográfica también tiene impacto en la clasificación del precio.
+
