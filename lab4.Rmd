@@ -333,4 +333,20 @@ Para medir la eficiencia del modelo se utilizó la métrica de exactitud (accura
 
 Esto sugiere que el modelo tiene una capacidad moderada de clasificación, logrando identificar correctamente cerca de dos tercios de los casos. Considerando que el problema involucra tres categorías y que la variable precio presenta alta variabilidad, este nivel de desempeño parece razonable. Además, dado que las clases se encuentran relativamente balanceadas, el valor de accuracy es representativo del desempeño general del modelo y no está sesgado hacia una categoría dominante.
 
+```{r matriz de confusión}
+conf_matrix <- table(
+  Real = test_class$price_category,
+  Predicho = pred_class
+)
 
+conf_matrix
+# Proporción (porcentaje)
+prop.table(conf_matrix)
+```
+El modelo presenta un desempeño adecuado, logrando clasificar correctamente una proporción considerable de los alojamientos. Se observa que la categoría Intermedia es la que presenta mayor número de aciertos, lo cual es consistente con el hecho de que esta es la clase más frecuente en el conjunto de datos. Asimismo, la categoría Económica también muestra un buen nivel de clasificación correcta, lo que indica que el modelo logra identificar patrones claros en los alojamientos de menor precio.
+
+Sin embargo, el modelo presenta mayores dificultades al momento de diferenciar entre categorías cercanas. En particular, se observa que un número significativo de alojamientos que pertenecen a la categoría Intermedia son clasificados como Económicos, lo que indica una tendencia a subestimar algunos precios. De forma similar, muchos alojamientos que son realmente Caros son clasificados como Intermedios, lo que sugiere que el modelo tiene limitaciones para distinguir correctamente en los rangos superiores de precio.
+
+Por otro lado, es importante destacar que los errores entre categorías extremas son relativamente pocos. Es decir, el modelo rara vez clasifica un alojamiento económico como caro o viceversa. Este comportamiento es positivo, ya que indica que el modelo logra capturar correctamente las diferencias más marcadas entre los niveles de precio, evitando errores más graves desde una perspectiva práctica.
+
+Desde el punto de vista del negocio, los errores más frecuentes, que ocurren entre categorías adyacentes, pueden ser considerados menos críticos. Sin embargo, estos errores aún pueden tener impacto, ya que una clasificación incorrecta podría influir en la estimación del valor de una propiedad o en la estrategia de recomendación. A pesar de ello, el hecho de que los errores más extremos sean poco comunes sugiere que el modelo mantiene un nivel aceptable de confiabilidad.
