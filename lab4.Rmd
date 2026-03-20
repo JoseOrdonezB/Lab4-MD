@@ -199,3 +199,14 @@ Se construyeron varios modelos de árboles de regresión variando la profundidad
 El modelo con profundidad 10 obtuvo el menor RMSE (1939.52), lo que sugiere que es el mejor modelo entre los evaluados para predecir el precio de los alojamientos.
 
 Sin embargo, es importante considerar que un aumento en la profundidad del árbol también incrementa el riesgo de sobreajuste (overfitting), ya que el modelo puede comenzar a adaptarse demasiado a los datos de entrenamiento y perder capacidad de generalización.
+
+## Comparación con modelo lineal en laboratorio anterior
+Se comparó el desempeño del modelo de árbol de regresión con el modelo de regresión lineal múltiple desarrollado en la entrega anterior, utilizando el RMSE como métrica de evaluación.
+
+El modelo de regresión lineal múltiple obtuvo un RMSE de aproximadamente 3011.84, mientras que el modelo de árbol de regresión, en su mejor configuración (profundidad 10), obtuvo un RMSE de 1939.52.
+
+Al comparar ambos resultados, se observa que el modelo de árbol de regresión presenta un error considerablemente menor, lo que indica un mejor desempeño en la predicción del precio de los alojamientos.
+
+Este resultado sugiere que el árbol de regresión logra capturar mejor la complejidad del problema, modelando relaciones no lineales e interacciones entre variables que no son consideradas en el modelo de regresión lineal.
+
+Por el contrario, la regresión lineal asume una relación lineal entre las variables predictoras y la variable objetivo, lo cual limita su capacidad para adaptarse a la alta variabilidad y complejidad presente en los precios de los alojamientos.
