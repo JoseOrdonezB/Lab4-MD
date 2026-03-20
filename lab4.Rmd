@@ -9,22 +9,108 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Librerias
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+library(rpart)
+library(rpart.plot)
+library(Metrics)
 ```
 
-## Including Plots
+## Carga de datos
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r datos}
+load("listings.RData")
+head(listings)
+str(listings)
+summary(listings)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r limpieza de datos}
+listings$price <- as.numeric(gsub("[$,]", "", listings$price))
+
+listings_clean <- listings_clean[!is.na(listings_clean$price), ]
+
+median_cols <- c(
+"bedrooms",
+"beds",
+"bathrooms",
+"host_listings_count",
+"host_total_listings_count"
+)
+
+listings_clean[median_cols] <- lapply(listings_clean[median_cols], function(x){
+  x[is.na(x)] <- median(x, na.rm=TRUE)
+  x
+})
+
+review_cols <- c(
+"review_scores_rating",
+"review_scores_accuracy",
+"review_scores_cleanliness",
+"review_scores_checkin",
+"review_scores_communication",
+"review_scores_location",
+"review_scores_value",
+"reviews_per_month"
+)
+
+listings_clean[review_cols] <- lapply(listings_clean[review_cols], function(x){
+  x[is.na(x)] <- 0
+  x
+})
+
+listings_clean <- listings_clean[complete.cases(listings_clean), ]
+
+listings_clean <- listings_clean[, sapply(listings_clean, function(x) {
+  if(is.character(x)) {
+    length(unique(x)) < 50
+  } else {
+    TRUE
+  }
+})]
+
+colSums(is.na(listings_clean))
+```
+
+Durante el proceso de preprocesamiento de datos, se eliminaron ciertas variables debido a que presentaban alta cardinalidad o contenían texto libre, como nombres, descripciones y ubicaciones específicas. Estas variables generan una gran cantidad de valores únicos que dificultan el entrenamiento de los modelos y pueden provocar errores durante la predicción, además de no aportar un valor significativo en la estimación del precio. Por ello, se optó por conservar únicamente variables relevantes y estructuradas que contribuyen de manera efectiva al desempeño del modelo.
+
+## Inciso No. 1
+
+```{r inciso 1 - entrenamiento y prueba}
+set.seed(123)
+
+train_index <- sample(1:nrow(listings_clean), 0.7*nrow(listings_clean))
+
+train_data <- listings_clean[train_index, ]
+test_data <- listings_clean[-train_index, ]
+
+dim(train_data)
+dim(test_data)
+
+```
+
+## Inciso No. 2
+
+```{r inciso 2 - árbol}
+tree_reg <- rpart(price ~ ., data = train_data, method = "anova")
+```
+
+Se construyó un modelo de árbol de regresión con el objetivo de predecir el precio por noche de las propiedades, utilizando todas las variables disponibles en el conjunto de entrenamiento (train_data).
+
+Para la implementación se utilizó el algoritmo de árboles de decisión mediante la función rpart, configurando el método como "anova".
+
+## Inciso No. 3
+
+```{r inciso 3 - predicción}
+pred_tree <- predict(tree_reg, test_data)
+
+rmse_tree <- rmse(test_data$price, pred_tree)
+rmse_tree
+```
+
+El modelo de árbol de regresión obtuvo un RMSE de 2062.81, lo que indica que, en promedio, las predicciones del precio presentan un error considerable respecto a los valores reales.
+
+Al comparar este valor con el precio promedio de las propiedades, se observa que el modelo presenta una precisión limitada, lo que sugiere que no logra capturar completamente la complejidad y variabilidad del mercado de precios.
+
+Este comportamiento puede explicarse debido a que los árboles de regresión tienden a generar predicciones constantes dentro de cada segmento, lo que reduce su capacidad para modelar relaciones más complejas entre las variables.
