@@ -5,6 +5,8 @@ date: "2026-03-20"
 output: html_document
 ---
 
+Link de Git: https://github.com/JoseOrdonezB/Lab4-MD.git 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -312,4 +314,23 @@ En los niveles siguientes del árbol, aparecen variables como estimated_revenue_
 Para propiedades con mayor capacidad, la variable bathrooms juega un papel importante, indicando que el número de baños influye significativamente en la diferenciación entre propiedades intermedias y caras.
 
 Finalmente, variables como longitude permiten una segmentación adicional, sugiriendo que la ubicación geográfica también tiene impacto en la clasificación del precio.
+
+```{r eficiencia del algoritmo}
+# predicciones en test
+pred_class <- predict(tree_class, test_class, type = "class")
+
+head(data.frame(
+  Real = test_class$price_category,
+  Predicho = pred_class
+))
+
+accuracy <- mean(pred_class == test_class$price_category)
+accuracy
+```
+El modelo de árbol de clasificación fue aplicado al conjunto de prueba con el objetivo de evaluar su capacidad para clasificar correctamente los alojamientos en las categorías Económica, Intermedia y Cara.
+
+Para medir la eficiencia del modelo se utilizó la métrica de exactitud (accuracy), obteniendo un valor de 0.6665. Esto indica que el modelo clasifica correctamente la mayor parte de los alojamientos en el conjunto de prueba.
+
+Esto sugiere que el modelo tiene una capacidad moderada de clasificación, logrando identificar correctamente cerca de dos tercios de los casos. Considerando que el problema involucra tres categorías y que la variable precio presenta alta variabilidad, este nivel de desempeño parece razonable. Además, dado que las clases se encuentran relativamente balanceadas, el valor de accuracy es representativo del desempeño general del modelo y no está sesgado hacia una categoría dominante.
+
 
