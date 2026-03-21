@@ -17,6 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rpart)
 library(rpart.plot)
 library(Metrics)
+library(caret)
 ```
 
 ## Carga de datos
@@ -119,6 +120,15 @@ listings_clean$host_neighbourhood <- NULL
 listings_clean <- data.frame(lapply(listings_clean, function(x) {
   if(is.character(x)) as.factor(x) else x
 }))
+
+cols_na <- c(
+  "minimum_minimum_nights",
+  "maximum_minimum_nights",
+  "minimum_maximum_nights",
+  "maximum_maximum_nights"
+)
+
+listings_clean <- listings_clean[, !(names(listings_clean) %in% cols_na)]
 
 colSums(is.na(listings_clean))
 dim(listings_clean)
@@ -350,3 +360,67 @@ Sin embargo, el modelo presenta mayores dificultades al momento de diferenciar e
 Por otro lado, es importante destacar que los errores entre categorías extremas son relativamente pocos. Es decir, el modelo rara vez clasifica un alojamiento económico como caro o viceversa. Este comportamiento es positivo, ya que indica que el modelo logra capturar correctamente las diferencias más marcadas entre los niveles de precio, evitando errores más graves desde una perspectiva práctica.
 
 Desde el punto de vista del negocio, los errores más frecuentes, que ocurren entre categorías adyacentes, pueden ser considerados menos críticos. Sin embargo, estos errores aún pueden tener impacto, ya que una clasificación incorrecta podría influir en la estimación del valor de una propiedad o en la estrategia de recomendación. A pesar de ello, el hecho de que los errores más extremos sean poco comunes sugiere que el modelo mantiene un nivel aceptable de confiabilidad.
+
+## Inciso No. 10
+
+```{r validación cruzada}
+control <- trainControl(method = "cv", number = 10)
+
+set.seed(123)
+tree_cv <- train(
+  price_category ~ ., 
+  data = train_class_num,
+  method = "rpart",
+  trControl = control,
+  tuneLength = 5
+)
+
+tree_cv
+```
+
+El modelo anterior obtuvo una precisión de 66.65%, mientras que el modelo entrenado con validación cruzada alcanzó una precisión de 67.92%.
+
+Esto representa una mejora aproximada del 1.27%, lo que indica un ligero incremento en el desempeño del modelo.
+
+Aunque la mejora en precisión no es considerablemente alta, el uso de validación cruzada permite obtener un modelo más robusto y confiable, ya que evalúa su desempeño en múltiples particiones de los datos, reduciendo el riesgo de sobreajuste.
+
+## Inciso No. 11
+
+```{r más modelos}
+depths <- c(2, 4, 6, 8)
+
+results <- data.frame()
+
+for(d in depths){
+  
+  modelo <- rpart(
+    price_category ~ .,
+    data = train_class_num,
+    method = "class",
+    control = rpart.control(maxdepth = d)
+  )
+
+  test_class_num <- test_class[, sapply(test_class, is.numeric)]
+  
+  pred <- predict(modelo, test_class_num, type = "class")
+  
+  acc <- mean(pred == test_class$price_category)
+  
+  results <- rbind(results, data.frame(
+    profundidad = d,
+    accuracy = acc
+  ))
+}
+
+results
+```
+
+Se evaluaron distintos modelos de árboles de clasificación variando la profundidad máxima del árbol.
+
+Los resultados obtenidos muestran que la precisión del modelo aumenta conforme se incrementa la profundidad, pasando de 63.16% con profundidad 2, a un máximo de 68.96% con profundidad 6.
+
+Sin embargo, al aumentar la profundidad a 8, no se observa una mejora adicional en la precisión, manteniéndose en 68.96%.
+
+Esto indica que el modelo alcanza su mejor desempeño con una profundidad de 6, logrando un equilibrio adecuado entre complejidad y capacidad predictiva.
+
+
