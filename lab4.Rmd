@@ -18,6 +18,7 @@ library(rpart)
 library(rpart.plot)
 library(Metrics)
 library(caret)
+library(randomForest)
 ```
 
 ## Carga de datos
@@ -423,4 +424,55 @@ Sin embargo, al aumentar la profundidad a 8, no se observa una mejora adicional 
 
 Esto indica que el modelo alcanza su mejor desempeño con una profundidad de 6, logrando un equilibrio adecuado entre complejidad y capacidad predictiva.
 
+## Inciso No. 12
+```{r}
+#Evitar data leakage
+train_data$price_category <- NULL
+test_data$price_category <- NULL
+```
+
+```{r}
+# eliminar alta cardinalidad en train y test
+high_cardinality <- sapply(train_data, function(x){
+  is.factor(x) && length(unique(x)) > 50
+})
+
+train_data <- train_data[, !high_cardinality]
+test_data  <- test_data[, !high_cardinality]
+```
+
+```{r}
+# modelo random forest
+# Tarda en correr (tener paciencia)
+set.seed(123)
+
+rf_reg <- randomForest(
+  price ~ ., 
+  data = train_data,
+  ntree = 100,
+  mtry = floor(sqrt(ncol(train_data)-1)),
+  importance = TRUE
+)
+```
+
+```{r}
+# predicción
+pred_rf <- predict(rf_reg, test_data)
+
+rmse_rf <- rmse(test_data$price, pred_rf)
+rmse_rf
+```
+
+```{r, fig.width=10, fig.height=8}
+varImpPlot(rf_reg, n.var = 15)
+```
+El modelo de Random Forest para regresión obtuvo un RMSE de 1337.63, lo cual representa una mejora significativa en comparación con el árbol de regresión (RMSE = 1939.52) y con el modelo de regresión lineal múltiple (RMSE ≈ 3011.84).
+
+Asimismo, el modelo logró explicar aproximadamente el 90.89% de la variabilidad del precio, lo que indica un alto nivel de ajuste a los datos.
+
+El análisis de importancia de variables muestra que factores como el tipo de habitación (room_type), los ingresos estimados del alojamiento (estimated_revenue_l365d), el número de camas (beds), la cantidad de propiedades del anfitrión (host_total_listings_count) y la disponibilidad anual (availability_365) tienen una influencia significativa en la predicción del precio.
+
+Estos resultados son consistentes con la lógica del mercado, ya que reflejan tanto características físicas del alojamiento como variables relacionadas con la demanda y el desempeño del anfitrión.
+
+En comparación con el árbol de regresión, el modelo de Random Forest logra capturar relaciones más complejas y no lineales entre las variables, reduciendo el error de predicción y mejorando la capacidad de generalización
 
